@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>吴恩达 AI 私教</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <aside id="sidebar">
+        <div class="sidebar-header">
+          <h1>AI 私教</h1>
+          <div id="progressSummary" class="progress-summary"></div>
+        </div>
+        <nav id="curriculumNav" class="curriculum-nav"></nav>
+      </aside>
+
+      <main id="main">
+        <div class="tutor-header">
+          <div class="tutor-avatar">吴</div>
+          <div class="tutor-info">
+            <span class="tutor-name">吴恩达教授</span>
+            <span id="currentLessonTitle" class="tutor-lesson"></span>
+          </div>
+          <div class="mode-toggle">
+            <button class="mode-btn active" data-mode="lesson">课程模式</button>
+            <button class="mode-btn" data-mode="chat">自由提问</button>
+          </div>
+        </div>
+
+        <div id="messages" class="messages"></div>
+
+        <div class="input-area">
+          <textarea
+            id="userInput"
+            placeholder="输入问题，Enter 发送，Shift+Enter 换行..."
+            rows="1"
+          ></textarea>
+          <button id="sendBtn" class="send-btn">发送</button>
+        </div>
+      </main>
+    </div>
+
+    <script src="curriculum.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
