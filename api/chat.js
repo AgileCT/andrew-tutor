@@ -50,7 +50,8 @@ module.exports = async function handler(req, res) {
     const stream = client.messages.stream({
       model: "claude-opus-4-8",
       max_tokens: 16000,
-      thinking: { type: "enabled", budget_tokens: 8000 },
+      thinking: { type: "adaptive" },
+      output_config: { effort: "high" },
       system: buildSystemPrompt(currentLesson, mode),
       messages,
     });
