@@ -90,7 +90,7 @@ function init() {
   state.currentLessonId = settings.currentLesson || "1.1";
   state.mode = settings.mode || "lesson";
   state.lang = settings.lang || "zh";
-  state.messages = loadHistory();
+  state.messages = loadHistory().filter((m) => !m.isError);
 
   applyLangToStaticUI();
   renderSidebar();
@@ -267,7 +267,7 @@ async function sendMessage(userContent) {
   state.isStreaming = true;
   document.getElementById("sendBtn").disabled = true;
 
-  const assistantMsg = { role: "assistant", content: "", thinkingSeconds: null };
+  const assistantMsg = { role: "assistant", content: "", thinkingSeconds: null, isError: false };
   state.messages.push(assistantMsg);
   renderMessages();
 
@@ -324,6 +324,7 @@ async function sendMessage(userContent) {
 
           if (event.type === "error") {
             assistantMsg.content = t().error(event.message);
+            assistantMsg.isError = true;
             bubble.textContent = assistantMsg.content;
           }
         } catch {
@@ -333,12 +334,18 @@ async function sendMessage(userContent) {
     }
   } catch (err) {
     assistantMsg.content = t().connError(err.message);
+    assistantMsg.isError = true;
     bubble.textContent = assistantMsg.content;
   }
 
   bubble.classList.remove("typing-cursor");
   state.isStreaming = false;
   document.getElementById("sendBtn").disabled = false;
+
+  // Don't persist error messages — roll back the failed exchange
+  if (assistantMsg.isError) {
+    state.messages = state.messages.slice(0, -2);
+  }
   saveHistory(state.messages);
 
   if (
