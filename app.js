@@ -90,7 +90,16 @@ function init() {
   state.currentLessonId = settings.currentLesson || "1.1";
   state.mode = settings.mode || "lesson";
   state.lang = settings.lang || "zh";
-  state.messages = loadHistory().filter((m) => !m.isError);
+  state.messages = loadHistory().filter((m) => {
+    if (m.isError) return false;
+    if (m.role === "assistant") {
+      const c = m.content || "";
+      // Drop legacy error messages saved before isError flag existed
+      if (c.startsWith("错误:") || c.startsWith("Error:") ||
+          c.startsWith("连接错误:") || c.startsWith("Connection error:")) return false;
+    }
+    return true;
+  });
 
   applyLangToStaticUI();
   renderSidebar();
@@ -216,6 +225,14 @@ function setupEventListeners() {
 
   document.querySelectorAll(".lang-btn").forEach((btn) => {
     btn.addEventListener("click", () => switchLang(btn.dataset.lang));
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    if (state.isStreaming) return;
+    state.messages = [];
+    saveHistory([]);
+    renderMessages();
+    if (state.mode === "lesson") startLesson();
   });
 }
 
