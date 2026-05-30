@@ -73,3 +73,80 @@ function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
+
+// ── Sidebar ────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  const nav = document.getElementById("curriculumNav");
+  const all = getAllLessons();
+  const completedCount = all.filter(
+    (l) => getLessonStatus(l.id) === "completed"
+  ).length;
+
+  document.getElementById("progressSummary").textContent =
+    `进度: ${completedCount} / ${all.length} 课`;
+
+  nav.innerHTML = Object.values(curriculum)
+    .map(
+      (mod) =>
+        `<div class="module-title">${mod.title}</div>` +
+        mod.lessons
+          .map((lesson) => {
+            const status = getLessonStatus(lesson.id);
+            const isActive = lesson.id === state.currentLessonId;
+            return `<div class="lesson-item ${status}${isActive ? " active" : ""}" data-id="${lesson.id}">
+              <span class="lesson-dot"></span>${lesson.title}
+            </div>`;
+          })
+          .join("")
+    )
+    .join("");
+
+  nav.querySelectorAll(".lesson-item:not(.locked)").forEach((el) => {
+    el.addEventListener("click", () => switchLesson(el.dataset.id));
+  });
+}
+
+function switchLesson(id) {
+  if (state.isStreaming) return;
+  state.currentLessonId = id;
+  state.messages = [];
+  saveHistory([]);
+  saveSettings({ ...loadSettings(), currentLesson: id });
+  renderSidebar();
+  updateLessonHeader();
+  renderMessages();
+  if (state.mode === "lesson") startLesson();
+}
+
+function renderModeToggle() {
+  document.querySelectorAll(".mode-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mode === state.mode);
+  });
+}
+
+function updateLessonHeader() {
+  const lesson = getLessonById(state.currentLessonId);
+  document.getElementById("currentLessonTitle").textContent =
+    lesson ? lesson.title : "";
+}
+
+// ── Event Listeners ────────────────────────────────────────────────────────
+function setupEventListeners() {
+  document.getElementById("sendBtn").addEventListener("click", handleSend);
+
+  document.getElementById("userInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  });
+
+  document.querySelectorAll(".mode-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (state.isStreaming) return;
+      state.mode = btn.dataset.mode;
+      saveSettings({ ...loadSettings(), mode: state.mode });
+      renderModeToggle();
+    });
+  });
+}
