@@ -55,13 +55,19 @@ module.exports = async function handler(req, res) {
       messages,
     });
 
-    const thinkingStart = Date.now();
+    req.on("close", () => {
+      stream.abort?.();
+      res.end();
+    });
+
+    let thinkingStart = 0;
     let inThinking = false;
 
     stream.on("streamEvent", (event) => {
       if (event.type === "content_block_start") {
         if (event.content_block.type === "thinking") {
           inThinking = true;
+          thinkingStart = Date.now();
           res.write(`data: ${JSON.stringify({ type: "thinking_start" })}\n\n`);
         }
       }
