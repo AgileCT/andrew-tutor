@@ -3,10 +3,41 @@ const LS_PROGRESS = "andrew_progress";
 const LS_HISTORY  = "andrew_history";
 const LS_SETTINGS = "andrew_settings";
 
+// ── i18n ───────────────────────────────────────────────────────────────────
+const i18n = {
+  zh: {
+    appTitle: "AI 私教",
+    progress: (d, total) => `进度: ${d} / ${total} 课`,
+    lessonMode: "课程模式",
+    freeChat: "自由提问",
+    placeholder: "输入问题，Enter 发送，Shift+Enter 换行...",
+    send: "发送",
+    startMsg: "开始这节课吧！",
+    completeBtn: "✓ 完成这节课，解锁下一课",
+    unlockHint: (title) => `Great work! 🎉 下一课「${title}」已解锁 — 点击左侧继续。`,
+    error: (msg) => `错误: ${msg}`,
+    connError: (msg) => `连接错误: ${msg}`,
+  },
+  en: {
+    appTitle: "AI Tutor",
+    progress: (d, total) => `Progress: ${d} / ${total}`,
+    lessonMode: "Lesson Mode",
+    freeChat: "Free Q&A",
+    placeholder: "Ask a question, Enter to send, Shift+Enter for new line...",
+    send: "Send",
+    startMsg: "Let's start this lesson!",
+    completeBtn: "✓ Complete lesson, unlock next",
+    unlockHint: (title) => `Great work! 🎉 Next: "${title}" unlocked — click the sidebar to continue.`,
+    error: (msg) => `Error: ${msg}`,
+    connError: (msg) => `Connection error: ${msg}`,
+  },
+};
+
 // ── State ──────────────────────────────────────────────────────────────────
 let state = {
   currentLessonId: "1.1",
   mode: "lesson",
+  lang: "zh",
   messages: [],
   isStreaming: false,
 };
@@ -58,10 +89,13 @@ function init() {
   const settings = loadSettings();
   state.currentLessonId = settings.currentLesson || "1.1";
   state.mode = settings.mode || "lesson";
+  state.lang = settings.lang || "zh";
   state.messages = loadHistory();
 
+  applyLangToStaticUI();
   renderSidebar();
   renderModeToggle();
+  renderLangToggle();
   updateLessonHeader();
   renderMessages();
 
@@ -74,6 +108,36 @@ function init() {
 
 document.addEventListener("DOMContentLoaded", init);
 
+// ── Lang ───────────────────────────────────────────────────────────────────
+function t() {
+  return i18n[state.lang];
+}
+
+function applyLangToStaticUI() {
+  document.getElementById("appTitle").textContent = t().appTitle;
+  document.getElementById("userInput").placeholder = t().placeholder;
+  document.getElementById("sendBtn").textContent = t().send;
+  document.querySelectorAll(".mode-btn").forEach((btn) => {
+    btn.textContent = btn.dataset.mode === "lesson" ? t().lessonMode : t().freeChat;
+  });
+}
+
+function renderLangToggle() {
+  document.querySelectorAll(".lang-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.lang === state.lang);
+  });
+}
+
+function switchLang(lang) {
+  if (state.isStreaming) return;
+  state.lang = lang;
+  saveSettings({ ...loadSettings(), lang });
+  applyLangToStaticUI();
+  renderLangToggle();
+  renderSidebar();
+  updateLessonHeader();
+}
+
 // ── Sidebar ────────────────────────────────────────────────────────────────
 function renderSidebar() {
   const nav = document.getElementById("curriculumNav");
@@ -83,18 +147,18 @@ function renderSidebar() {
   ).length;
 
   document.getElementById("progressSummary").textContent =
-    `进度: ${completedCount} / ${all.length} 课`;
+    t().progress(completedCount, all.length);
 
   nav.innerHTML = Object.values(curriculum)
     .map(
       (mod) =>
-        `<div class="module-title">${mod.title}</div>` +
+        `<div class="module-title">${moduleTitle(mod, state.lang)}</div>` +
         mod.lessons
           .map((lesson) => {
             const status = getLessonStatus(lesson.id);
             const isActive = lesson.id === state.currentLessonId;
             return `<div class="lesson-item ${status}${isActive ? " active" : ""}" data-id="${lesson.id}">
-              <span class="lesson-dot"></span>${lesson.title}
+              <span class="lesson-dot"></span>${lessonTitle(lesson, state.lang)}
             </div>`;
           })
           .join("")
@@ -127,7 +191,7 @@ function renderModeToggle() {
 function updateLessonHeader() {
   const lesson = getLessonById(state.currentLessonId);
   document.getElementById("currentLessonTitle").textContent =
-    lesson ? lesson.title : "";
+    lesson ? lessonTitle(lesson, state.lang) : "";
 }
 
 // ── Event Listeners ────────────────────────────────────────────────────────
@@ -148,6 +212,10 @@ function setupEventListeners() {
       saveSettings({ ...loadSettings(), mode: state.mode });
       renderModeToggle();
     });
+  });
+
+  document.querySelectorAll(".lang-btn").forEach((btn) => {
+    btn.addEventListener("click", () => switchLang(btn.dataset.lang));
   });
 }
 
@@ -214,8 +282,9 @@ async function sendMessage(userContent) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         messages: apiMessages,
-        currentLesson: lesson ? lesson.title : state.currentLessonId,
+        currentLesson: lesson ? lessonTitle(lesson, state.lang) : state.currentLessonId,
         mode: state.mode,
+        lang: state.lang,
       }),
     });
 
@@ -254,7 +323,7 @@ async function sendMessage(userContent) {
           }
 
           if (event.type === "error") {
-            assistantMsg.content = `错误: ${event.message}`;
+            assistantMsg.content = t().error(event.message);
             bubble.textContent = assistantMsg.content;
           }
         } catch {
@@ -263,7 +332,7 @@ async function sendMessage(userContent) {
       }
     }
   } catch (err) {
-    assistantMsg.content = `连接错误: ${err.message}`;
+    assistantMsg.content = t().connError(err.message);
     bubble.textContent = assistantMsg.content;
   }
 
@@ -291,7 +360,7 @@ function handleSend() {
 }
 
 function startLesson() {
-  sendMessage("开始这节课吧！");
+  sendMessage(t().startMsg);
 }
 
 // ── Lesson Completion ──────────────────────────────────────────────────────
@@ -300,7 +369,7 @@ function showCompleteLessonButton() {
 
   const btn = document.createElement("button");
   btn.className = "complete-btn";
-  btn.textContent = "✓ 完成这节课，解锁下一课";
+  btn.textContent = t().completeBtn;
 
   btn.addEventListener("click", () => {
     completeLesson(state.currentLessonId);
@@ -309,9 +378,10 @@ function showCompleteLessonButton() {
 
     const nextId = getNextLessonId(state.currentLessonId);
     if (nextId) {
+      const nextLesson = getLessonById(nextId);
       const hint = {
         role: "assistant",
-        content: `Great work! 🎉 下一课「${getLessonById(nextId).title}」已解锁 — 点击左侧继续。`,
+        content: t().unlockHint(lessonTitle(nextLesson, state.lang)),
         thinkingSeconds: null,
       };
       state.messages.push(hint);

@@ -2,16 +2,21 @@ const Anthropic = require("@anthropic-ai/sdk");
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-function buildSystemPrompt(lessonTitle, mode) {
+function buildSystemPrompt(lessonTitle, mode, lang) {
+  const langNote = lang === "en"
+    ? "Respond in English. You may naturally sprinkle in a few Chinese phrases as Andrew Ng sometimes does."
+    : "Respond primarily in Chinese (Mandarin). Naturally mix in English technical terms and phrases like \"Let me build on that\" as Andrew Ng does.";
+
   return `You are Professor Andrew Ng, tutoring a student one-on-one.
 
 Teaching style:
 - Build intuition first, then introduce math
-- Mix Chinese and English naturally ("Let me build on that...", "That's a great question!")
 - Be extremely encouraging — no question is too basic
 - Use concrete examples to introduce abstract concepts (house prices, spam emails, cat photos)
 - After explaining, ask: "Does that make sense? What's on your mind?"
 - Keep responses focused and conversational, not lecture-length
+
+Language: ${langNote}
 
 Current context: The student is studying "${lessonTitle}"
 Mode: ${
@@ -35,7 +40,7 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { messages, currentLesson, mode } = req.body;
+  const { messages, currentLesson, mode, lang = "zh" } = req.body;
 
   if (!messages || !currentLesson) {
     return res.status(400).json({ error: "Missing messages or currentLesson" });
@@ -52,7 +57,7 @@ module.exports = async function handler(req, res) {
       max_tokens: 16000,
       thinking: { type: "adaptive" },
       output_config: { effort: "high" },
-      system: buildSystemPrompt(currentLesson, mode),
+      system: buildSystemPrompt(currentLesson, mode, lang),
       messages,
     });
 
